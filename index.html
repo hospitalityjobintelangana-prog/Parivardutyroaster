@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff Weekly Duty Roster</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+  :root{
+    --ink:#1d2433; --muted:#667085; --line:#2b3345; --paper:#f4f5f7; --card:#fff;
+    --off:#e10600; --brand:#1f2a44; --accent:#2f6fbf;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:Roboto,"Segoe UI",system-ui,-apple-system,Arial,sans-serif;font-size:16px;line-height:1.35}
+  button,input,select,textarea{font:inherit;color:inherit}
+  button{cursor:pointer}
+
+/* ––––– top banner ––––– */
+.banner{background:var(–brand);color:#fff;padding:18px 16px 14px}
+.banner h1{margin:0;font-size:clamp(22px,4.2vw,34px);letter-spacing:.04em;font-weight:800}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;
+margin-top:12px}
+.meta label{display:block;font-size:13px;opacity:.85;margin-bottom:3px}
+.meta input{width:100%;height:44px;border-radius:8px;border:2px solid #fff3c4;
+background:#fffbe6;color:var(–ink);padding:0 10px;font-weight:600}
+.weekspan{font-size:13px;margin-top:4px;opacity:.9;min-height:16px}
+
+/* ––––– toolbar ––––– */
+.toolbar{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+background:#fff;border-bottom:2px solid var(–line);padding:10px 16px}
+.btn{height:42px;padding:0 14px;border-radius:8px;border:2px solid var(–line);background:#fff;
+font-weight:700;white-space:nowrap}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(–accent);border-color:var(–accent);color:#fff}
+.btn.go{background:#1f7a46;border-color:#1f7a46;color:#fff}
+.btn.danger{border-color:#b42318;color:#b42318}
+.toolbar select{height:42px;border-radius:8px;border:2px solid var(–line);padding:0 8px;background:#fff}
+.spacer{flex:1}
+
+main{padding:14px 12px 60px;max-width:1200px;margin:0 auto}
+.hint{color:var(–muted);font-size:14px;margin:4px 4px 14px}
+
+/* ––––– department section ––––– */
+.dept{background:var(–card);border:2px solid var(–s);border-radius:10px;margin-bottom:22px;overflow:hidden;
+break-inside:avoid;page-break-inside:avoid}
+.dhead{background:var(–s);color:var(–t);display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px}
+.dname{flex:1 1 220px;min-width:0;height:46px;font-size:22px;font-weight:800;background:transparent;
+color:inherit;border:2px dashed transparent;border-radius:6px;padding:0 8px}
+.dname:focus{outline:none;border-color:currentColor;background:rgba(255,255,255,.18)}
+.count{font-size:14px;font-weight:600;opacity:.9}
+.dtools{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.dtools select{height:38px;border-radius:6px;border:1px solid rgba(0,0,0,.35);background:#fff;color:var(–ink);padding:0 6px;max-width:150px}
+.ibtn{width:38px;height:38px;border-radius:6px;border:1px solid rgba(0,0,0,.35);background:#fff;color:var(–ink);font-size:17px;padding:0}
+
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;min-width:860px;table-layout:fixed}
+th,td{border:1.5px solid var(–line);padding:0;vertical-align:middle}
+th{background:var(–m);color:#1d2433;font-size:14px;font-weight:800;padding:9px 6px;text-align:center}
+td{background:var(–l)}
+col.cname{width:210px} col.ctime{width:112px} col.coff{width:150px} col.cdel{width:46px}
+td input,td textarea{width:100%;border:0;background:transparent;padding:10px 8px;min-height:46px;display:block}
+td input:focus,td textarea:focus{outline:3px solid var(–accent);outline-offset:-3px;background:#fff}
+.c-name input{font-weight:800;font-size:17px;text-transform:uppercase}
+.c-time input{text-align:center;font-weight:600}
+td textarea{resize:none;overflow:hidden;line-height:1.3}
+td.sticky{position:sticky;left:0;z-index:2}
+
+/* time validation */
+td.missing{background:#fff1b8!important}
+td.bad{background:#ffd9d6!important}
+td.bad input{color:#a1180f;font-weight:700}
+
+/* weekly off */
+.c-off{background:var(–l)}
+.offbtn{width:100%;min-height:46px;border:0;padding:8px 6px;background:transparent;color:#7a8191;font-size:14px}
+.offbtn.set{background:var(–off);color:#fff;font-weight:800;font-size:15px;text-align:center;line-height:1.25;letter-spacing:.02em}
+
+.delcell{text-align:center}
+.xbtn{width:36px;height:36px;border-radius:50%;border:1px solid #b42318;background:#fff;color:#b42318;font-weight:800}
+
+/* special instruction */
+.instr{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;background:#fff4d6;border-top:2px solid var(–line);
+padding:0}
+.instr .lab{flex:0 0 auto;background:#3b2f0b;color:#fff;font-weight:800;padding:12px;display:flex;align-items:center;
+max-width:100%}
+.instr textarea{flex:1 1 280px;border:0;background:transparent;padding:12px;font-weight:700;font-size:16px;
+min-height:54px;resize:none;overflow:hidden;color:#3b2f0b}
+.instr textarea:focus{outline:3px solid var(–accent);outline-offset:-3px;background:#fff}
+.dfoot{display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;background:var(–l);border-top:2px solid var(–line)}
+.empty{text-align:center;color:var(–muted);padding:34px 10px;border:2px dashed #b7bcc7;border-radius:10px}
+
+/* weekly-off picker */
+.overlay{position:fixed;inset:0;background:rgba(10,15,30,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+.overlay.show{display:flex}
+.modal{background:#fff;border-radius:12px;padding:16px;width:min(380px,100%)}
+.modal h3{margin:0 0 4px;font-size:19px}
+.modal p{margin:0 0 12px;color:var(–muted);font-size:14px}
+.daylist{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.day{display:flex;align-items:center;gap:10px;border:2px solid #c9ceda;border-radius:8px;padding:0 10px;height:48px;font-weight:700;cursor:pointer}
+.day input{width:22px;height:22px;accent-color:var(–off)}
+.day.on{background:var(–off);border-color:var(–off);color:#fff}
+.modal .row{display:flex;gap:8px;margin-top:14px}
+.modal .row .btn{flex:1}
+
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1d2433;color:#fff;padding:10px 16px;border-radius:8px;
+opacity:0;pointer-events:none;transition:opacity .2s;z-index:60;max-width:90vw;text-align:center}
+.toast.show{opacity:1}
+
+/* ––––– print ––––– */
+@page{size:A4 landscape;margin:8mm}
+@media print{
+*{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{background:#fff;font-size:12px}
+.noprint,.toolbar,.hint,.dtools,.dfoot,.delcell,.xbtn{display:none!important}
+.banner{padding:8px 10px}
+.banner h1{font-size:22px}
+.meta input{height:30px;border-width:1px}
+main{padding:6px 0;max-width:none}
+.dept{margin-bottom:10px;border-width:1.5px}
+.scroll{overflow:visible}
+table{min-width:0}
+td input,td textarea{padding:5px 6px;min-height:28px}
+::placeholder{color:transparent!important}
+.offbtn{min-height:28px;padding:4px}
+.offbtn:not(.set){color:transparent}
+.dname{font-size:17px;height:34px}
+td.missing,td.bad{background:var(–l)!important}
+th.cdelh,col.cdel{display:none}
+}
+@media (max-width:640px){
+main{padding:10px 6px 60px}
+.toolbar{padding:8px}
+.btn{height:44px}
+}
+</style>
+
+</head>
+<body>
+
+<header class="banner">
+  <h1>STAFF WEEKLY DUTY ROSTER</h1>
+  <div class="meta">
+    <div>
+      <label for="weekStart">Week starting</label>
+      <input type="date" id="weekStart">
+      <div class="weekspan" id="weekSpan"></div>
+    </div>
+    <div>
+      <label for="preparedBy">Prepared by</label>
+      <input type="text" id="preparedBy" placeholder="Name">
+    </div>
+    <div>
+      <label for="prepDate">Date</label>
+      <input type="date" id="prepDate">
+    </div>
+    <div>
+      <label for="manager">Manager / Supervisor</label>
+      <input type="text" id="manager" placeholder="Name">
+    </div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <select id="addType" aria-label="Department type"></select>
+  <button class="btn primary" id="addDept">+ Add department</button>
+  <span class="spacer"></span>
+  <button class="btn go" id="exportXlsx">Export to Excel</button>
+  <button class="btn" id="printBtn">Print</button>
+  <button class="btn" id="backupBtn">Backup</button>
+  <button class="btn" id="restoreBtn">Restore</button>
+  <button class="btn danger" id="resetBtn">Reset</button>
+  <input type="file" id="restoreFile" accept=".json,application/json" hidden>
+</div>
+
+<main>
+  <p class="hint">Type times like 7am, 5:30 pm or 17:00 and they are tidied into 7:00 AM format. Changes save automatically on this device.</p>
+  <div id="depts"></div>
+</main>
+
+<datalist id="times"></datalist>
+
+<div class="overlay" id="offModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="offTitle">
+    <h3 id="offTitle">Weekly off</h3>
+    <p id="offWho">Select one or more days.</p>
+    <div class="daylist" id="dayList"></div>
+    <div class="row">
+      <button class="btn" id="offClear">Clear</button>
+      <button class="btn primary" id="offDone">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ================= constants ================= */
+const KEY = 'focusprism_duty_roster_v1';
+const DAYS = ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY'];
+// l = light row colour, m = column header colour, s = strong header colour, t = header text colour
+const THEMES = {
+  gold:   {n:'Gold',   l:'#FFF6D1', m:'#F5DC82', s:'#E0A800', t:'#3a2a00'},
+  blue:   {n:'Blue',   l:'#E3EFFF', m:'#B9D6FA', s:'#2F6FBF', t:'#ffffff'},
+  orange: {n:'Orange', l:'#FFEBD9', m:'#FFC99B', s:'#C75B12', t:'#ffffff'},
+  green:  {n:'Green',  l:'#E2F5E3', m:'#BDE6BF', s:'#2E8B4F', t:'#ffffff'},
+  purple: {n:'Purple', l:'#F0E4FA', m:'#D6BBEE', s:'#7A4BB0', t:'#ffffff'},
+  teal:   {n:'Teal',   l:'#D9F3F0', m:'#A8E0DB', s:'#17807A', t:'#ffffff'},
+  grey:   {n:'Grey',   l:'#EBEDF0', m:'#CDD2D8', s:'#566170', t:'#ffffff'},
+  pink:   {n:'Pink',   l:'#FCE4EC', m:'#F4B9CF', s:'#C2457A', t:'#ffffff'},
+  brown:  {n:'Brown',  l:'#F6EBDC', m:'#E0C6A5', s:'#8A5A2B', t:'#ffffff'}
+};
+const PRESETS = [
+  ['Store','gold'],['Cash Counter','blue'],['Kitchen – Indian','green'],['Kitchen – Chinese','orange'],
+  ['Kitchen – Continental','purple'],['Bakery','brown'],['Housekeeping','pink'],['Service','teal'],
+  ['Driver','grey'],['Other','grey']
+];
+const INSTR_LABEL = 'OFF DAY / STAFFING INSTRUCTION:';
+
+/* ================= helpers ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Math.random().toString(36).slice(2,9);
+const todayISO = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+let toastTimer;
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2600); }
+
+function fmtDate(iso){
+  if(!iso) return '';
+  const p=iso.split('-'); if(p.length!==3) return iso;
+  const d=new Date(+p[0],+p[1]-1,+p[2]);
+  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+}
+function addDays(iso,n){ const p=iso.split('-'); const d=new Date(+p[0],+p[1]-1,+p[2]+n);
+  const m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return d.getFullYear()+'-'+m+'-'+dd; }
+
+/* Time parsing: returns "h:mm AM/PM" or null when invalid. */
+function normTime(raw){
+  let s = String(raw||'').trim().toUpperCase().replace(/\./g,'').replace(/\s+/g,'');
+  if(!s) return '';
+  s = s.replace(/:(?=[AP])/,'');                         // "3:00:PM" -> "3:00PM"
+  const m = s.match(/^(\d{1,2})(?::?(\d{2}))?(?::\d{2})?(AM|PM|A|P)?$/);
+  if(!m) return null;
+  let h=+m[1], min=m[2]?+m[2]:0, ap=m[3]?m[3][0]:'';
+  if(min>59) return null;
+  if(ap){
+    if(h<1||h>12) return null;
+    if(ap==='A') h = (h===12?0:h); else h = (h===12?12:h+12);
+  }else{
+    if(h>23) return null;
+    if(h<=12) return null;                               // 1–12 without AM/PM is ambiguous
+  }
+  const suffix = h>=12?'PM':'AM';
+  let h12 = h%12; if(h12===0) h12=12;
+  return h12+':'+String(min).padStart(2,'0')+' '+suffix;
+}
+
+/* ================= state ================= */
+function newRow(){ return {name:'',in:'',out:'',bin:'',bout:'',off:[],remarks:''}; }
+function newDept(name,theme,rows){
+  const r=[]; for(let i=0;i<(rows||3);i++) r.push(newRow());
+  return {id:uid(),name:name,theme:theme,rows:r,showInstr:false,instruction:''};
+}
+function defaultState(){
+  return {
+    meta:{weekStart:'',preparedBy:'',date:todayISO(),manager:''},
+    depts:[
+      newDept('Store','gold'),
+      newDept('Cash Counter','blue'),
+      newDept('Kitchen – Indian','green'),
+      newDept('Kitchen – Chinese','orange'),
+      newDept('Kitchen – Continental','purple'),
+      newDept('Service','teal'),
+      newDept('Driver','grey')
+    ]
+  };
+}
+let S;
+function load(){
+  try{
+    const raw=localStorage.getItem(KEY);
+    if(raw){ const o=JSON.parse(raw); if(o&&o.meta&&Array.isArray(o.depts)) return o; }
+  }catch(e){}
+  return defaultState();
+}
+let saveT;
+function save(){
+  clearTimeout(saveT);
+  saveT=setTimeout(()=>{ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} },250);
+}
+
+/* ================= rendering ================= */
+function rowFlags(r){
+  const f={in:'',out:'',bin:'',bout:''};
+  ['in','out','bin','bout'].forEach(k=>{
+    const v=r[k];
+    if(v && normTime(v)===null) f[k]='bad';
+  });
+  if(r.name.trim()){
+    if(!r.in) f.in='missing';
+    if(!r.out) f.out='missing';
+  }
+  return f;
+}
+function offHtml(r){
+  return r.off.length ? r.off.map(esc).join('<br>') : 'Select days';
+}
+function rowHtml(r,j){
+  const f=rowFlags(r);
+  const tcell=(k,label)=>`<td class="c-time ${f[k]}" ${f[k]==='bad'?'title="Use a time like 7:00 AM"':''}>
+      <input data-t="${k}" list="times" inputmode="text" autocomplete="off" aria-label="${label}" placeholder="7:00 AM" value="${esc(r[k])}"></td>`;
+  return `<tr data-r="${j}">
+    <td class="c-name sticky"><input data-k="rname" aria-label="Employee name" placeholder="Employee name" value="${esc(r.name)}" autocomplete="off"></td>
+    ${tcell('in','Timing in')}${tcell('out','Timing out')}${tcell('bin','Break in')}${tcell('bout','Break out')}
+    <td class="c-off"><button type="button" class="offbtn ${r.off.length?'set':''}" data-act="off" aria-label="Weekly off">${offHtml(r)}</button></td>
+    <td><textarea data-k="rremarks" rows="1" aria-label="Remarks" placeholder="Remarks">${esc(r.remarks)}</textarea></td>
+
+```
+<td class="delcell"><button type="button" class="xbtn" data-act="del-row" aria-label="Remove employee">✕</button></td>
+```
+
+  </tr>`;
+}
+function deptHtml(d,i){
+  const th=THEMES[d.theme]||THEMES.grey;
+  const typeOpts='<option value="" selected disabled>Type…</option>'+PRESETS.map(p=>`<option value="${esc(p[0])}">${esc(p[0])}</option>`).join('');
+  const themeOpts=Object.keys(THEMES).map(k=>`<option value="${k}" ${k===d.theme?'selected':''}>${THEMES[k].n}</option>`).join('');
+  const n=d.rows.filter(r=>r.name.trim()).length;
+  return `<section class="dept" data-i="${i}" style="--l:${th.l};--m:${th.m};--s:${th.s};--t:${th.t}">
+    <div class="dhead">
+      <input class="dname" data-k="dname" value="${esc(d.name)}" aria-label="Department name" placeholder="Department name">
+      <span class="count">${n} staff</span>
+      <div class="dtools noprint">
+        <select data-k="type" aria-label="Department type">${typeOpts}</select>
+        <select data-k="theme" aria-label="Colour">${themeOpts}</select>
+        <button type="button" class="ibtn" data-act="up" aria-label="Move up">↑</button>
+        <button type="button" class="ibtn" data-act="down" aria-label="Move down">↓</button>
+        <button type="button" class="ibtn" data-act="dup" aria-label="Duplicate department">⧉</button>
+        <button type="button" class="ibtn" data-act="del-dept" aria-label="Delete department">🗑</button>
+      </div>
+    </div>
+    <div class="scroll"><table>
+      <colgroup><col class="cname"><col class="ctime"><col class="ctime"><col class="ctime"><col class="ctime"><col class="coff"><col><col class="cdel"></colgroup>
+      <thead><tr><th>Employee Name</th><th>Timing In</th><th>Timing Out</th><th>Break In</th><th>Break Out</th><th>Weekly Off</th><th>Remarks</th><th class="cdelh noprint"></th></tr></thead>
+      <tbody>${d.rows.map(rowHtml).join('')}</tbody>
+    </table></div>
+    ${d.showInstr?`<div class="instr"><div class="lab">${INSTR_LABEL}</div>
+      <textarea data-k="instr" rows="1" placeholder="e.g. One person has to extend 7:00 AM–9:00 PM. Break 3 hours.">${esc(d.instruction)}</textarea></div>`:''}
+    <div class="dfoot noprint">
+      <button type="button" class="btn" data-act="add-row">+ Add employee</button>
+      <button type="button" class="btn" data-act="toggle-instr">${d.showInstr?'Remove instruction row':'+ Instruction row'}</button>
+    </div>
+  </section>`;
+}
+function render(){
+  const box=$('#depts');
+  if(!S.depts.length){
+    box.innerHTML='<div class="empty">No departments yet. Pick a type above and tap “Add department”.</div>';
+    return;
+  }
+  box.innerHTML=S.depts.map(deptHtml).join('');
+  box.querySelectorAll('textarea').forEach(autosize);
+}
+function autosize(el){ el.style.height='auto'; el.style.height=(el.scrollHeight+2)+'px'; }
+function updateWeekSpan(){
+  const w=S.meta.weekStart;
+  $('#weekSpan').textContent = w ? fmtDate(w)+' to '+fmtDate(addDays(w,6)) : '';
+}
+
+/* ================= events ================= */
+const deptsEl=$(’#depts’);
+
+deptsEl.addEventListener(‘input’,e=>{
+const el=e.target, sec=el.closest(’.dept’); if(!sec) return;
+const d=S.depts[+sec.dataset.i]; if(!d) return;
+const k=el.dataset.k, tk=el.dataset.t;
+if(k===‘dname’){ d.name=el.value; }
+else if(k===‘instr’){ d.instruction=el.value; autosize(el); }
+else{
+const tr=el.closest(‘tr’); if(!tr) return;
+const r=d.rows[+tr.dataset.r];
+if(k===‘rname’){ r.name=el.value; refreshFlags(tr,r); sec.querySelector(’.count’).textContent=d.rows.filter(x=>x.name.trim()).length+’ staff’; }
+else if(k===‘rremarks’){ r.remarks=el.value; autosize(el); }
+else if(tk){ r[tk]=el.value; }
+}
+save();
+});
+deptsEl.addEventListener(‘change’,e=>{
+const el=e.target, sec=el.closest(’.dept’); if(!sec) return;
+const d=S.depts[+sec.dataset.i];
+if(el.dataset.t){                                   // tidy time on leaving the field
+const tr=el.closest(‘tr’), r=d.rows[+tr.dataset.r], k=el.dataset.t;
+const n=normTime(el.value);
+if(n!==null){ r[k]=n; el.value=n; }
+refreshFlags(tr,r); save();
+}else if(el.dataset.k===‘type’){
+const p=PRESETS.find(x=>x[0]===el.value);
+if(p){ if(p[0]!==‘Other’) d.name=p[0]; d.theme=p[1]; }
+save(); render();
+}else if(el.dataset.k===‘theme’){
+d.theme=el.value; save(); render();
+}
+});
+function refreshFlags(tr,r){
+const f=rowFlags(r);
+const map={in:1,out:2,bin:3,bout:4};
+Object.keys(map).forEach(k=>{
+const td=tr.children[map[k]];
+td.classList.remove(‘bad’,‘missing’);
+if(f[k]) td.classList.add(f[k]);
+});
+}
+
+deptsEl.addEventListener(‘click’,e=>{
+const b=e.target.closest(’[data-act]’); if(!b) return;
+const sec=b.closest(’.dept’); const i=+sec.dataset.i; const d=S.depts[i];
+const act=b.dataset.act;
+if(act===‘add-row’){ d.rows.push(newRow()); save(); render();
+const rows=deptsEl.querySelectorAll(’.dept’)[i].querySelectorAll(‘tbody tr’);
+const last=rows[rows.length-1]; if(last){ const inp=last.querySelector(‘input’); inp&&inp.focus(); }
+}
+else if(act===‘del-row’){
+const j=+b.closest(‘tr’).dataset.r; const r=d.rows[j];
+const filled=r.name||r.in||r.out||r.bin||r.bout||r.off.length||r.remarks;
+if(!filled || confirm(‘Remove this employee row?’)){ d.rows.splice(j,1); save(); render(); }
+}
+else if(act===‘up’&&i>0){ [S.depts[i-1],S.depts[i]]=[S.depts[i],S.depts[i-1]]; save(); render(); }
+else if(act===‘down’&&i<S.depts.length-1){ [S.depts[i+1],S.depts[i]]=[S.depts[i],S.depts[i+1]]; save(); render(); }
+else if(act===‘dup’){
+const c=JSON.parse(JSON.stringify(d)); c.id=uid(); c.name=d.name+’ (Copy)’;
+S.depts.splice(i+1,0,c); save(); render(); toast(‘Department duplicated’);
+}
+else if(act===‘del-dept’){
+if(confirm(‘Delete “’+(d.name||‘this department’)+’” and all its employees?’)){ S.depts.splice(i,1); save(); render(); }
+}
+else if(act===‘toggle-instr’){
+if(d.showInstr && d.instruction.trim() && !confirm(‘Remove the instruction row and its text?’)) return;
+d.showInstr=!d.showInstr; if(!d.showInstr) d.instruction=’’; save(); render();
+if(d.showInstr){ const t=deptsEl.querySelectorAll(’.dept’)[i].querySelector(’.instr textarea’); t&&t.focus(); }
+}
+else if(act===‘off’){ openOff(i,+b.closest(‘tr’).dataset.r); }
+});
+
+/* ––––– weekly off picker ––––– */
+let offCtx=null;
+const dayList=$(’#dayList’);
+dayList.innerHTML=DAYS.map(d=>`<label class="day"><input type="checkbox" value="${d}"><span>${d[0]+d.slice(1).toLowerCase()}</span></label>`).join(’’);
+function openOff(i,j){
+offCtx={i,j};
+const r=S.depts[i].rows[j];
+$(’#offWho’).textContent=(r.name.trim()||‘Employee’)+’ – select one or more days.’;
+dayList.querySelectorAll(‘input’).forEach(cb=>{ cb.checked=r.off.includes(cb.value); cb.parentElement.classList.toggle(‘on’,cb.checked); });
+$(’#offModal’).classList.add(‘show’);
+}
+dayList.addEventListener(‘change’,e=>{ e.target.parentElement.classList.toggle(‘on’,e.target.checked); });
+function closeOff(apply,clear){
+if(offCtx && apply){
+const r=S.depts[offCtx.i].rows[offCtx.j];
+r.off = clear ? [] : DAYS.filter(d=>dayList.querySelector(‘input[value=”’+d+’”]’).checked);
+save(); render();
+}
+offCtx=null; $(’#offModal’).classList.remove(‘show’);
+}
+$(’#offDone’).addEventListener(‘click’,()=>closeOff(true,false));
+$(’#offClear’).addEventListener(‘click’,()=>closeOff(true,true));
+$(’#offModal’).addEventListener(‘click’,e=>{ if(e.target.id===‘offModal’) closeOff(false); });
+
+/* ––––– toolbar ––––– */
+$(’#addType’).innerHTML=PRESETS.map(p=>`<option value="${esc(p[0])}">${esc(p[0])}</option>`).join(’’);
+$(’#addDept’).addEventListener(‘click’,()=>{
+const v=$(’#addType’).value; const p=PRESETS.find(x=>x[0]===v)||PRESETS[PRESETS.length-1];
+S.depts.push(newDept(p[0]===‘Other’?‘New Department’:p[0],p[1]));
+save(); render();
+const secs=deptsEl.querySelectorAll(’.dept’); const s=secs[secs.length-1];
+if(s){ s.scrollIntoView({behavior:‘smooth’,block:‘start’}); }
+});
+$(’#printBtn’).addEventListener(‘click’,()=>window.print());
+$(’#resetBtn’).addEventListener(‘click’,()=>{
+if(confirm(‘Reset everything to the blank starter roster? This clears all names and timings.’)){ S=defaultState(); save(); bindMeta(); render(); toast(‘Roster reset’); }
+});
+function download(blob,name){
+const url=URL.createObjectURL(blob); const a=document.createElement(‘a’);
+a.href=url; a.download=name; document.body.appendChild(a); a.click();
+setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },1500);
+}
+$(’#backupBtn’).addEventListener(‘click’,()=>{
+download(new Blob([JSON.stringify(S,null,2)],{type:‘application/json’}),‘duty-roster-backup-’+todayISO()+’.json’);
+toast(‘Backup saved’);
+});
+$(’#restoreBtn’).addEventListener(‘click’,()=>$(’#restoreFile’).click());
+$(’#restoreFile’).addEventListener(‘change’,e=>{
+const f=e.target.files[0]; if(!f) return;
+const rd=new FileReader();
+rd.onload=()=>{
+try{
+const o=JSON.parse(rd.result);
+if(!o||!o.meta||!Array.isArray(o.depts)) throw new Error(‘bad’);
+o.depts.forEach(d=>{ d.id=d.id||uid(); d.rows=(d.rows||[]).map(r=>Object.assign(newRow(),r,{off:Array.isArray(r.off)?r.off:[]})); });
+S=o; save(); bindMeta(); render(); toast(‘Roster restored’);
+}catch(err){ alert(‘That file is not a valid roster backup.’); }
+e.target.value=’’;
+};
+rd.readAsText(f);
+});
+
+/* ––––– header fields ––––– */
+function bindMeta(){
+$(’#weekStart’).value=S.meta.weekStart||’’;
+$(’#preparedBy’).value=S.meta.preparedBy||’’;
+$(’#prepDate’).value=S.meta.date||’’;
+$(’#manager’).value=S.meta.manager||’’;
+updateWeekSpan();
+}
+[[‘weekStart’,‘weekStart’],[‘preparedBy’,‘preparedBy’],[‘prepDate’,‘date’],[‘manager’,‘manager’]].forEach(([id,k])=>{
+$(’#’+id).addEventListener(‘input’,e=>{ S.meta[k]=e.target.value; if(k===‘weekStart’) updateWeekSpan(); save(); });
+});
+
+/* ––––– time suggestions ––––– */
+(function(){
+let h=’’;
+for(let m=5*60;m<=23*60+30;m+=30){
+const hh=Math.floor(m/60), mm=m%60, ap=hh>=12?‘PM’:‘AM’; let h12=hh%12||12;
+h+=’<option value="'+h12+':'+String(mm).padStart(2,'0')+' '+ap+'">’;
+}
+$(’#times’).innerHTML=h;
+})();
+
+/* ================= Excel export ================= */
+const argb = hex => ‘FF’+hex.replace(’#’,’’).toUpperCase();
+const thin = {style:‘thin’,color:{argb:‘FF2B3345’}};
+const borderAll = {top:thin,left:thin,bottom:thin,right:thin};
+
+async function exportExcel(){
+if(!window.ExcelJS){ exportCSV(); return; }
+try{
+const wb=new ExcelJS.Workbook();
+wb.creator=‘Focus Prism’; wb.created=new Date();
+const ws=wb.addWorksheet(‘Weekly Duty Roster’,{
+pageSetup:{orientation:‘landscape’,paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0,
+margins:{left:.3,right:.3,top:.4,bottom:.4,header:.2,footer:.2}},
+views:[{state:‘frozen’,ySplit:4}]
+});
+ws.columns=[{width:30},{width:13},{width:13},{width:13},{width:13},{width:20},{width:44}];
+
+```
+// title
+ws.mergeCells('A1:G1');
+const t=ws.getCell('A1'); t.value='STAFF WEEKLY DUTY ROSTER';
+t.font={name:'Calibri',size:22,bold:true,color:{argb:'FFFFFFFF'}};
+t.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F2A44'}};
+t.alignment={horizontal:'center',vertical:'middle'}; ws.getRow(1).height=38;
+
+// meta
+const metaFill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF6D1'}};
+const lab=(addr,text)=>{ const c=ws.getCell(addr); c.value=text; c.font={bold:true,size:12}; c.fill=metaFill; c.border=borderAll; c.alignment={vertical:'middle'}; };
+const val=(rng,text)=>{
+  ws.mergeCells(rng);
+  const [a,b]=rng.split(':'); const row=a.replace(/\D/g,'');
+  for(let c=a.charCodeAt(0);c<=b.charCodeAt(0);c++) ws.getCell(String.fromCharCode(c)+row).border=borderAll;
+  const cell=ws.getCell(a); cell.value=text; cell.font={bold:true,size:12}; cell.alignment={vertical:'middle',horizontal:'left'};
+};
+let wk=S.meta.weekStart? fmtDate(S.meta.weekStart)+' to '+fmtDate(addDays(S.meta.weekStart,6)) : '';
+lab('A2','Week Starting:'); val('B2:C2',wk);
+lab('D2','Prepared By:'); val('E2:G2',S.meta.preparedBy||'');
+lab('A3','Date:'); val('B3:C3',fmtDate(S.meta.date));
+lab('D3','Manager / Supervisor:'); val('E3:G3',S.meta.manager||'');
+ws.getRow(2).height=24; ws.getRow(3).height=24;
+// spacer row 4 (frozen boundary)
+ws.getRow(4).height=8;
+
+let rowNo=5;
+S.depts.forEach(d=>{
+  const th=THEMES[d.theme]||THEMES.grey;
+  // department heading
+  ws.mergeCells(rowNo,1,rowNo,7);
+  const h=ws.getCell(rowNo,1);
+  h.value=(d.name||'Department').toUpperCase();
+  h.font={size:16,bold:true,color:{argb:argb(th.t)}};
+  h.fill={type:'pattern',pattern:'solid',fgColor:{argb:argb(th.s)}};
+  h.alignment={horizontal:'left',vertical:'middle',indent:1};
+  for(let c=1;c<=7;c++) ws.getCell(rowNo,c).border=borderAll;
+  ws.getRow(rowNo).height=30; rowNo++;
+
+  // column headings
+  ['Employee Name','Timing In','Timing Out','Break In','Break Out','Weekly Off','Remarks'].forEach((x,c)=>{
+    const cell=ws.getCell(rowNo,c+1); cell.value=x;
+    cell.font={bold:true,size:11,color:{argb:'FF1D2433'}};
+    cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:argb(th.m)}};
+    cell.alignment={horizontal:'center',vertical:'middle',wrapText:true}; cell.border=borderAll;
+  });
+  ws.getRow(rowNo).height=22; rowNo++;
+
+  // employees
+  d.rows.forEach(r=>{
+    const vals=[r.name.toUpperCase(),r.in,r.out,r.bin,r.bout,r.off.join('\n'),r.remarks];
+    vals.forEach((v,c)=>{
+      const cell=ws.getCell(rowNo,c+1); cell.value=v; cell.border=borderAll;
+      cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:argb(th.l)}};
+      cell.font={size:12,bold:c===0};
+      cell.alignment={vertical:'middle',horizontal:(c>=1&&c<=5)?'center':'left',wrapText:true};
+      if(c>=1&&c<=4) cell.numFmt='@';
+      if(c===5 && r.off.length){
+        cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE10600'}};
+        cell.font={size:12,bold:true,color:{argb:'FFFFFFFF'}};
+      }
+    });
+    const remLines=Math.max(1,Math.ceil((r.remarks||'').length/42));
+    ws.getRow(rowNo).height=Math.max(24,18*Math.max(r.off.length,remLines));
+    rowNo++;
+  });
+
+  // instruction row
+  if(d.showInstr && d.instruction.trim()){
+    ws.mergeCells(rowNo,1,rowNo,7);
+    const c=ws.getCell(rowNo,1);
+    c.value={richText:[
+      {text:INSTR_LABEL+'\n',font:{bold:true,size:12,color:{argb:'FF7A1F00'}}},
+      {text:d.instruction.toUpperCase(),font:{bold:true,size:12,color:{argb:'FF3B2F0B'}}}
+    ]};
+    c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFE9A8'}};
+    c.alignment={wrapText:true,vertical:'middle',horizontal:'left',indent:1};
+    for(let k=1;k<=7;k++) ws.getCell(rowNo,k).border=borderAll;
+    const lines=1+d.instruction.split('\n').reduce((a,l)=>a+Math.max(1,Math.ceil(l.length/120)),0);
+    ws.getRow(rowNo).height=Math.max(32,18*lines);
+    rowNo++;
+  }
+  rowNo++; // blank spacer
+});
+
+const buf=await wb.xlsx.writeBuffer();
+const name='Weekly_Duty_Roster_'+(S.meta.weekStart||todayISO())+'.xlsx';
+download(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),name);
+toast('Excel file downloaded');
+```
+
+}catch(err){
+console.error(err); alert(‘Excel export failed. Please try again.’);
+}
+}
+/* Fallback when the Excel library cannot load (for example, no internet on first load) */
+function exportCSV(){
+const q=v=>’”’+String(v==null?’’:v).replace(/”/g,’””’)+’”’;
+const lines=[[‘STAFF WEEKLY DUTY ROSTER’],[‘Week starting’,S.meta.weekStart],[‘Prepared by’,S.meta.preparedBy],[‘Date’,S.meta.date],[‘Manager / Supervisor’,S.meta.manager],[]];
+S.depts.forEach(d=>{
+lines.push([d.name.toUpperCase()]);
+lines.push([‘Employee Name’,‘Timing In’,‘Timing Out’,‘Break In’,‘Break Out’,‘Weekly Off’,‘Remarks’]);
+d.rows.forEach(r=>lines.push([r.name,r.in,r.out,r.bin,r.bout,r.off.join(’ / ‘),r.remarks]));
+if(d.showInstr&&d.instruction.trim()) lines.push([INSTR_LABEL+’ ‘+d.instruction]);
+lines.push([]);
+});
+const csv=’\ufeff’+lines.map(l=>l.map(q).join(’,’)).join(’\r\n’);
+download(new Blob([csv],{type:‘text/csv;charset=utf-8’}),‘Weekly_Duty_Roster_’+(S.meta.weekStart||todayISO())+’.csv’);
+toast(‘Excel library not loaded – saved as CSV instead’);
+}
+$(’#exportXlsx’).addEventListener(‘click’,exportExcel);
+
+/* ================= init ================= */
+S=load();
+bindMeta();
+render();
+window.addEventListener(‘beforeprint’,()=>deptsEl.querySelectorAll(‘textarea’).forEach(autosize));
+window.addEventListener(‘resize’,()=>deptsEl.querySelectorAll(‘textarea’).forEach(autosize));
+})();
+</script>
+
+</body>
+</html>
